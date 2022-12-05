@@ -11,13 +11,18 @@ public class PlayerMovement : MonoBehaviour
     public float jumpForce;
     public float jumpCooldown;
     public float airMultiplier;
-    bool readyToJump;
+    public bool readyToJump;
+
+    public float flyingForce;
+    public bool holdingJump;
+    public bool isFlying;
 
     public float playerHeight;
     public LayerMask ground;
     bool grounded;
 
     public KeyCode jumpKey = KeyCode.Space;
+    public KeyCode flyDownKey = KeyCode.LeftShift;
 
     public Transform orientation;
 
@@ -32,13 +37,17 @@ public class PlayerMovement : MonoBehaviour
         rb =  GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         readyToJump = true;
+        holdingJump = false;
     }
 
     // Update is called once per frame
     private void Update()
     {
+        if (isFlying)
+        {
+            Fly();
+        }
         grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, ground);
-
         PlayerInput();
         LimitSpeed();
 
@@ -49,6 +58,10 @@ public class PlayerMovement : MonoBehaviour
         else{
             rb.drag = 0;
         }
+        if (isFlying)
+        {
+            Fly();
+        }
     }
     private void FixedUpdate()
     {
@@ -58,14 +71,37 @@ public class PlayerMovement : MonoBehaviour
     {
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
-
-        if (Input.GetKey(jumpKey) && readyToJump && grounded)
+        if (Input.GetKeyUp(jumpKey) && holdingJump){
+            holdingJump = false;
+        }
+        if (Input.GetKey(jumpKey))
         {
-            readyToJump = false;
+            if (readyToJump && grounded)
+            {
 
-            Jump();
+                readyToJump = false;
 
-            Invoke(nameof(ResetJump), jumpCooldown);
+                Jump();
+
+                Invoke(nameof(ResetJump), jumpCooldown);
+            }
+            else if (!holdingJump){
+                if ((readyToJump != grounded) || (!readyToJump)){
+                    isFlying = true;
+                    FlyUp();
+                }
+            }
+            else if (isFlying)
+            {
+                FlyUp();
+            }
+        }
+        if (Input.GetKey(flyDownKey))
+        {
+            if (isFlying)
+            {
+                FlyDown();
+            }
         }
     }
     private void MovePlayer()
@@ -93,6 +129,24 @@ public class PlayerMovement : MonoBehaviour
     {
         rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        holdingJump = true;
+    }
+    private void Fly(){
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+    }
+    private void FlyUp()
+    {
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        rb.AddForce(transform.up * flyingForce, ForceMode.Impulse);
+    }
+    private void FlyDown()
+    {
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        rb.AddForce(transform.up * -flyingForce, ForceMode.Impulse);
+        if (grounded)
+        {
+            isFlying = false;
+        }
     }
     private void ResetJump()
     {
